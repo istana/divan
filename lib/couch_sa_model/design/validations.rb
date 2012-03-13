@@ -3,27 +3,20 @@ module Validations
   def validates_acceptance_of(attr, options = {})
     conditions ||= []
     
-    message = "TODO Attribute #{attr} must be set to true"
-    message ||= options[:message]
-    
-    accept = "true"
-    accept ||= options[:accept]
-    
-#    js = "if(#{attr} !== #{accept})
-#    {
-#      errors.push(#{message})
-#    }"
-
-    allow_null = cond_allow_null(attr, options)
+    message = options[:message]
+    message ||= "TODO Attribute #{attr} must be set to true"
+    accept = options[:accept]    
+    accept ||= "true"
+    allow_null = options[:allow_null]
+    allow_null ||= false
     
     cond_on(conditions, options)
     cond_if(conditions, options)
-    conf_unless(conditions, options)
-    
-    # acceptance_of, 
+    cond_unless(conditions, options)
+    # acceptance_of
     validation =  "doc.#{attr} === #{accept}"
     
-    gen_validation(conditions, allow_null, validation, message)
+    gen_validation(conditions, validation, attr, message, allow_null)
   end
 
 
@@ -39,7 +32,7 @@ module Validations
     
     def gen_validation(conditions, validation, attr, msg, allow_null = false)
       val = ""
-      msgerr = "errors.push(#{msg})"
+      msgerr = "errors.push(\"#{msg}\")"
       # validation
       val = "if(!(" + validation + ")) { " + msgerr + " }"
       # allow_null #{allow_null} && (doc.#{attr} == null) if allow_null is true, no need to be there
