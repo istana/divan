@@ -65,7 +65,7 @@ describe Validations do
   
   it 'gen_validation should contain more than two ifs when allow_null is true' do
     aaa = @test_class.gen_validation(["condition1", "condition2"], 'validation', "animal", "error message", true)
-    aaa.should =~ /.*if.*if.*/
+    aaa.should =~ /.*if.*if.*if.*/
   end
   
 end
