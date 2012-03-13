@@ -34,36 +34,23 @@ module Validations
     #    if allow_nil==false - do not skip validation
     #      if !validation
     #           error
-    def gen_validation(conditions, allow_null, validation, msg)
+    # allow_null == true ---> null || notnull is always true, neg (when error occurs): null && notnull is always false
+    # need to check when allow_null == false
+    
+    def gen_validation(conditions, validation, attr, msg, allow_null = false)
       val = ""
       msgerr = "errors.push(#{msg})"
-      
+      # validation
       val = "if(!(" + validation + ")) { " + msgerr + " }"
-      # wrap allow_null TODO
-      (val = "if(#{allow_null} && (doc.#{attr} == null)) {" + val + "}") unless allow_null.nil? || allow_null.empty?
+      # allow_null #{allow_null} && (doc.#{attr} == null) if allow_null is true, no need to be there
+      # so basically if allow null is true and attr isn't null, validate...this will be hard to remember
+      (val = "if(doc.#{attr} != null) {" + val + "}") if allow_null==true
       # spidermonkey has lazy eval of logic operators
-      (val = "if(" + conditions.join(" && ") + ") { #{msgerr} }") unless conditions.size == 0
-
+      (val = "if(" + conditions.join(" && ") + ") { #{val} }") unless conditions.size == 0
       val
     end
     
-    ###
-    ## asi netreba, staci to v gen_validation, bude tam jedna podmienka niekedy navyse, no
-    def cond_allow_null(attr, options)
-      if options.has_key?(:allow_null)
-        if options[:allow_null] || = true
-        if options[:allow_null]==true
-        #conditions << "(doc.#{attr} != null) || (doc.#{attr} == null)"
-        # nothing - null || notnull is always true, neg (when error occurs): null && notnull is always false
-        ""
-        else
-        "(doc.#{attr} == null)"
-        end
-      else
-        ""
-      end
-    end
-    
+
     # if unless and on conditions are together
     
     def cond_if(conditions, options)
