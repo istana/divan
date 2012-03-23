@@ -1,6 +1,6 @@
 require 'yaml'
 
-class AAcore
+class Configuration
   attr_reader :config
   
   def initialize
