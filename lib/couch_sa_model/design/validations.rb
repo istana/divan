@@ -6,7 +6,7 @@ module Validations
     message = options[:message]
     message ||= "TODO Attribute #{attr} must be set to true"
     accept = options[:accept]    
-    accept ||= "true"
+    accept ||= true
     allow_null = options[:allow_null]
     allow_null ||= false
     
@@ -19,7 +19,34 @@ module Validations
     gen_validation(conditions, validation, attr, message, allow_null)
   end
 
-
+  def validates_exclusion_of(attr, options ={})
+    conditions ||= []
+    
+    message = options[:message]
+    message ||= "TODO Attribute #{attr} is reserved"
+    allow_blank = options[:allow_blank]    
+    allow_blank ||= false
+    allow_null = options[:allow_null]
+    allow_null ||= false
+    
+    enumin = options[:in]
+    
+    # Array, Range and Hash supported, Enumerable
+    # javascript doesn't have Range and Hash
+    
+    bla = "["
+    enuminl = enumin.length
+    enumin.each_with_index do |val, index|
+      bla << "val"
+      if index != (enuminl-1)
+        bla << ", "
+      end
+    end
+    bla 
+    
+    myarray.indexOf(value)
+    
+  end
 
 
    ### low level functions
