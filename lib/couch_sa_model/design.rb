@@ -45,7 +45,7 @@ class CouchSaModel::Design
     RestClient.get(dbstring).jsondecode
   end
   
-  def needsync?
+  def sync
     shaofdesign=Digest::SHA1.hexdigest(@uberdoc.jsonencode)
     md5ofdesign=Digest::MD5.hexdigest(@uberdoc.jsonencode)
     
