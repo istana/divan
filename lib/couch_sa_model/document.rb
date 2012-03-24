@@ -39,7 +39,7 @@ class Document
   def initialize
     # set type
     @type = self.class.to_s.downcase
-    @database = CouchRest.database(load_config_database)
+    @database = 
     @doc = {}
     @errors = []
   end
@@ -57,8 +57,18 @@ class Document
     @doc.include?(:_rev)
   end
   
+  def dgetid(id)
+    
+  end
+  def rawget(design, view, options={})
+    begin
+      RestClient.get('http://localhost:5984/ionorchis_development/bla')
+    rescue RestClient::ResourceNotFound => e 
+      puts "bla"
+    end
+  end
   # design doc (via @type), view, optional - key/startkey+endkey, descending (true), group (true), include_docs (true)  
-  def dget(view)
+  def dget(view, options = {})
 key
 keys
 startkey
