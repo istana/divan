@@ -1,5 +1,5 @@
 # javascript validations for design document
-module Validations
+module CouchSaModel::Validations
   def validates_acceptance_of(attr, options = {})
     conditions ||= []
     

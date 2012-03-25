@@ -1,6 +1,6 @@
 require 'yaml'
 
-class Configuration
+class CouchSaModel::Configuration
   attr_reader :config
   
   def initialize

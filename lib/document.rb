@@ -1,6 +1,5 @@
 # -*- encoding : utf-8 -*-
-require "couchrest"
-class Document
+class CouchSaModel::Document
   attr_accessor :database, :type, :doc, :errors
 
 ##steal

@@ -1,13 +1,9 @@
-require_relative "design/validations.rb"
-
-# move upper, choose yajl
-
-require 'multi_json'
 require 'digest/sha1'
 require 'digest/md5'
+require_relative './validations.rb'
 
 class CouchSaModel::Design
-  extend Validations
+  extend ::CouchSaModel::Validations
   
   attr_reader :_id, :language, :validations, :views, :shows
   
@@ -33,7 +29,11 @@ class CouchSaModel::Design
     end
   end
   
-  def views
+  def gen_validations
+    validate_doc_update
+  end
+  
+  def avail_views
   
   end
 
