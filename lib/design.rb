@@ -1,40 +1,46 @@
 require 'digest/sha1'
 require 'digest/md5'
 require_relative './validations.rb'
+require_relative './common.rb'
 
-class CouchSaModel::Design
-  extend ::CouchSaModel::Validations
+
+class Divan::Design
+  include Validations
+  include Common
   
-  attr_reader :_id, :language, :validations, :views, :shows
+  attr_reader :id, :language, :validations, :views, :shows
   
   def initialize
-    @_id='_design/'+self.class
+    @id='_design/'+self.class.to_s
     @language='javascript'
     @views={}
     @validations=[]
-    @shows={}
-    @uberdoc={}
+#    @shows={}
+#    @uberdoc={}
+  end
+  
+  # generates json of whole design document
+  def uberdoc
+    {
+      'id' => @id,
+      'language' => @language,
+      # should return string
+      'validate_doc_update' =>
+<<EOT
+(function (newDoc, oldDoc, userCtx, secObj) {
+
+
+})    
+EOT
   end
   
   def validate_doc_update
-    @validations.join("\n")
+    @validations.join("\n\n")
   end
   
-  class String
-    def jsondecode
-      MultiJson.decode(self.strip)
-    end
-    def jsonencode
-      MultiJson.encode(self.strip)
-    end
-  end
-  
-  def gen_validations
-    validate_doc_update
-  end
   
   def avail_views
-  
+    @views.keys
   end
 
   def info

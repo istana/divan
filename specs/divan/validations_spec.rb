@@ -1,12 +1,12 @@
 require File.expand_path("../../spec_helper", __FILE__)
 
-describe Validations do
+describe Divan::Validations do
   class Test
   end
 
   before :each do 
     @test_class = Test.new
-    @test_class.extend(Validations)
+    @test_class.extend(Divan::Validations)
   end
   
   it 'cond_on should return condition on update (oldDoc != null) + add to array test' do

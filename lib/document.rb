@@ -1,6 +1,10 @@
 # -*- encoding : utf-8 -*-
-class CouchSaModel::Document
-  attr_accessor :database, :type, :doc, :errors
+
+require_relative './common.rb'
+
+class Divan::Document
+  include ::Divan::Common
+  attr_accessor :database, :type, :doc, :messages
 
 ##steal
 =begin
@@ -35,20 +39,28 @@ class CouchSaModel::Document
             end
           end
 =end
-  def initialize
+  def design
+    self.class.to_s.downcase
+  end
+
+  def initialize(options = {})
     # set type
     @type = self.class.to_s.downcase
-    @database = 
-    @doc = {}
-    @errors = []
+    @database = Divan::Configuration.dbstring
+    @doc = options['doc'] || {}
+    # errors, notices, ...
+    @messages = options['messages'] || []
+    # debug
+    @metadata = options['metadata'] || {}
   end
 
   def save
+  ## todo!
     begin
       response = @database.save_doc(@doc)
     rescue => e
       puts e.response
-      @errors += e.response + " (databáza/resource neexistuje)"
+      @messages += e.response + " (databáza/resource neexistuje)"
     end
   end
   
@@ -56,17 +68,65 @@ class CouchSaModel::Document
     @doc.include?(:_rev)
   end
   
-  def dgetid(id)
-    
+  # Document class, will have save available
+  def self.dget(database, id)
+    doc = rawget(database+id)
+    Document.new('doc' => doc['result'], 'metadata' => doc.headers, 'messages' => doc['errors'])
   end
-  def rawget(design, view, options={})
+  
+  #hash todo class method
+  def dgetraw(id)
+    @doc = rawget(@database+id)['doc']
+  end
+
+  # todo class method, todo _all_docs, todo 404 error
+  # probably array of Documents, design doc name is calculated
+  def dsget(view, options={})
+    resultraw = rawget(@database+'_/design/'+design+'/_view/'+view)
+    result = resultraw['result']['rows']
+    docs = []
+    result['rows'].each do |doc|
+      docs << Document.new('doc' => result['rows'])
+    end
+    
+    metadata = resultraw['result']
+    metadata.delete('rows')
+    metadata.merge(resultraw['headers'])
+    
+    docs.define_singleton_method :metadata, lambda { metadata }
+    docs 
+  end
+  
+  # only hash
+  def dsgetraw(view, options={})
+    resultraw = rawget(@database+'_/design/'+design+'/_view/'+view)
+    docs = resultraw['result']['rows']
+    
+    metadata = resultraw['result']
+    metadata.delete('rows')
+    metadata.merge(resultraw['headers'])
+    
+    docs.define_singleton_method :metadata, lambda { metadata }
+    docs
+  end
+  
+  def self.rawget(query, params = {})
     begin
-      RestClient.get('http://localhost:5984/ionorchis_development/bla')
+      result =  RestClient.get(query, {:params => params}, :accept => 'application/json')
+      {'result' => result.jsondecode, 'headers' => result.headers}
     rescue RestClient::ResourceNotFound => e 
-      puts "bla"
+      puts "bla not found"
+      {'errors' => e.response.jsondecode, 'headers' => result.headers}
+    rescue RestClient::Forbidden => e
+      puts "bla forbidden"
+      {'errors' => e.response.jsondecode, 'headers' => result.headers}
+    rescue RestClient::Conflict => e
+      puts "bla conflict"
+      {'errors' => e.response.jsondecode, 'headers' => result.headers}
     end
   end
-  # design doc (via @type), view, optional - key/startkey+endkey, descending (true), group (true), include_docs (true)  
+  # design doc (via @type), view, optional - key/startkey+endkey, descending (true), group (true), include_docs (true)
+=begin
   def dget(view, options = {})
 key
 keys
@@ -86,6 +146,6 @@ inclusive_end
 update_seq 
     
   end
-  
+=end 
   
 end 

@@ -1,0 +1,15 @@
+---
+dbreader:
+  development:
+    foo: bar
+  test:
+    foo: bar
+  production:
+    protocol: https
+dbadmin:
+  development: 
+  test: 
+  production:
+    prefix: test
+    username: aaa
+    password: bbb

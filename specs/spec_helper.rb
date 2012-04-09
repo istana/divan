@@ -1,8 +1,10 @@
 #require "bundler/setup"
-#require "rubygems"
+require "rubygems"
 require "rspec"
+#require "ruby-debug19"
 
-require File.join(File.dirname(__FILE__), '..','lib','couch_sa_model.rb')
-require File.join(File.dirname(__FILE__), '..','lib','couch_sa_model/design.rb')
+require File.join(File.dirname(__FILE__), '..','lib','divan.rb')
+#require File.join(File.dirname(__FILE__), '..','lib','design.rb')
 
-require File.join(File.dirname(__FILE__), '..','lib','couch_sa_model/design/validations.rb')
+
+#require File.join(File.dirname(__FILE__), '..','lib','validations.rb')
