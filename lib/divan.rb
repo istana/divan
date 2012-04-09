@@ -1,7 +1,7 @@
   require 'multi_json'
   MultiJson.engine = :yajl
 
-  module CouchSaModel
+  module Divan
     # expand_path because of rspec!
     #require File.expand_path("../couch_sa_model/validations.rb", __FILE__)
     #require_relative("couch_sa_model/validations.rb")
