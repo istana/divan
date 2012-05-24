@@ -45,7 +45,7 @@ class Divan::Configuration
     env = ENV['RACK_ENV'] || 'development'
     env = Rails.env if defined? Rails
     
-    if @@config==nil || !@@config.include?(usertype) || !@@config[usertype].include?(env) || @@config[usertype][env].nil?
+    if !@@config.include?(usertype) || !@@config[usertype].include?(env) || @@config[usertype][env].nil?
       databaseuri = {'protocol'=>'http', 'username'=>'', 'password'=>'', 'host'=>'localhost', 'port'=>'5984', 'db'=>'divan'}
     else
       par = @@config[usertype][env]

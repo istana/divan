@@ -40,7 +40,7 @@ class Divan::Document
           end
 =end
   def design
-    self.class.to_s.downcase
+    self.class.to_s
   end
 
   def initialize(options = {})
@@ -76,7 +76,7 @@ class Divan::Document
   
   #hash todo class method
   def dgetraw(id)
-    @doc = rawget(@database+id)['doc']
+    @doc = rawget(@database+id)
   end
 
   # todo class method, todo _all_docs, todo 404 error
