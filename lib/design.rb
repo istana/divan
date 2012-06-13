@@ -61,6 +61,7 @@ EOT
 
   
   def self.sync?
+    # TODO use HEAD?
     design = rawget(@@database+@@id)
     if design.code == 404
       return true

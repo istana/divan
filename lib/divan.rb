@@ -1,4 +1,5 @@
   require 'multi_json'
+  require 'securerandom'
   MultiJson.engine = :yajl
 
   module Divan

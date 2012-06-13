@@ -22,7 +22,7 @@ module Divan::Comm
     errors
   end
   
-  def rawget(query, params = {})
+  def rawget(query, params = {}, accept = 'application/json') # TODO
     begin
       result =  ::RestClient.get(query, {:params => params, :accept => 'application/json'})
       
@@ -45,7 +45,7 @@ module Divan::Comm
   
   def rawput(query, payload={:foo=>'bar'})# :content_type => :json, 
     begin
-      result = 	::RestClient.put(query, payload.jsonencode, {:accept => 'application/json'})
+      result = ::RestClient.put(query, payload.jsonencode, {:content_type => 'application/json'})
       
       assemble_dbresult(result, result.headers, result.args, result.code, nil)
     rescue ::RestClient::ResourceNotFound => e

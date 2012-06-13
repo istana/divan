@@ -1,5 +1,3 @@
-
-
 module Divan::Common
   # accessors use is needed for it to work both in include and extend style
   def dbinfo
