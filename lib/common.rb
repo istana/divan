@@ -25,16 +25,25 @@ module Divan::Common
       false
     end
   end
-end
-
-class String
-  def jsondecode
-    MultiJson.load(self.strip)
+  
+  def flush_database
+  #TODO
+  #  _ensure_full_commit
+  end
+  
+  def changes
+  #TODO
+  #_changes
   end
 end
 
-class Hash
-  def jsonencode
-    MultiJson.dump(self)
+class Object
+  def blank?
+    return true if self.nil?
+    return true if self == false
+    return true if self.respond_to? :empty? && self.empty?
+    return true if self.is_a? String && /\A\s*\z/.match(self)
+    false 
   end
 end
+
