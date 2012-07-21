@@ -52,7 +52,7 @@ class Divan::Configuration
       par = @@config[usertype][env]
       protocol = par['protocol'] || 'http'
       host = par['host'] || 'localhost'
-      port = par['port'].to_s || '5984'
+      port = par['port'] || '5984'
       db = par['database'] || 'divan-'+env
       username = par['username'] || ''
       password = par['password'] || ''
