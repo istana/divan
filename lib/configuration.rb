@@ -2,12 +2,12 @@ require 'yaml'
 
 class Divan::Configuration
   def self.load_config(path=nil)
-    file ||= path
+    file ||= path if File.exists?(path.to_s)
     file ||= File.join(Rails.root,'config/couchdb.yaml') if (defined? Rails) && File.exists?(File.join(Rails.root,'config/couchdb.yaml'))
     file ||= File.join(File.dirname(__FILE__),'config/couchdb.yaml') if File.exists?(File.join(File.dirname(__FILE__),'config/couchdb.yaml'))
     file ||= 'couchdb.yaml' if File.exists?('couchdb.yaml')
 
-    @@config = ::YAML::load(File.open(file)) unless file==nil
+    @@config = ::YAML::load(File.read(file)) unless file==nil
     @@config = {} if file==nil  
   end
   
@@ -46,15 +46,13 @@ class Divan::Configuration
     env = Rails.env if defined? Rails
     
     if !@@config.include?(usertype) || !@@config[usertype].include?(env) || @@config[usertype][env].nil?
-      databaseuri = {'protocol'=>'http', 'username'=>'', 'password'=>'', 'host'=>'localhost', 'port'=>'5984', 'db'=>'divan'}
+      databaseuri = {'protocol'=>'http', 'username'=>'', 'password'=>'', 'host'=>'localhost', 'port'=>'5984', 'db'=>'divan-'+env}
     else
       par = @@config[usertype][env]
       protocol = par['protocol'] || 'http'
       host = par['host'] || 'localhost'
       port = par['port'].to_s || '5984'
-      prefix = par['prefix'] || 'divan'
-      suffix = par['suffix'] || ''
-      db = (suffix.empty? ? prefix : prefix+'-'+suffix)
+      db = par['database'] || 'divan-'+env
       username = par['username'] || ''
       password = par['password'] || ''
 

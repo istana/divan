@@ -1,15 +1,17 @@
 ---
 dbreader:
+  test:
+    protocol: https
+    host: example.org
+    port: 5986
+    database: softdivan
+    username: login
+    password: password1
   development:
     foo: bar
-  test:
-    foo: bar
   production:
-    protocol: https
+    lounge: on divan
 dbadmin:
   development: 
-  test: 
-  production:
-    prefix: test
-    username: aaa
-    password: bbb
+  test:
+    port: 1111

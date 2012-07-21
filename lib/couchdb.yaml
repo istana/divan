@@ -1,29 +1,14 @@
-# Defined per database. They can read all types of documents from the DB, and they can write (and edit) documents to the DB except for design documents.
 dbreader:
   development: &development
-    protocol: 'http'
-    host: localhost
-    port: 5984
-    prefix: ionorchis
-    suffix: development
-    username:
-    password:
+    database: conandev
 
   test: &test
     <<: *development
-    suffix: test
+    database: conantest
 
   production: &production
-    protocol: 'https'
-    host: localhost
-    port: 5984
-    prefix: equuleus
-    suffix: production
-    username: root
-    password: 123
+    database: conan
 
-
-# Defined per database. They have all the privileges readers have plus the privileges: write (and edit) design documents, add/remove database admins and readers, set the database revisions limit (/somedb/_revs_limit API) and execute temporary views against the database (/somedb/_temp_view API). They can not create a database and neither delete a database. 
 dbadmin:
   development:
     <<: *development
