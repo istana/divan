@@ -8,7 +8,8 @@ class Divan::Configuration
     file ||= 'couchdb.yaml' if File.exists?('couchdb.yaml')
 
     @@config = ::YAML::load(File.read(file)) unless file==nil
-    @@config = {} if file==nil  
+    @@config = {} if file==nil
+    return self  
   end
   
   def self.config

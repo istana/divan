@@ -4,8 +4,7 @@ describe Divan::Configuration do
   before :all do
     # custom location
     @config_file = File.join(File.dirname(__FILE__), 'couchdb-custom-path.yaml')
-    @conf = Divan::Configuration
-    @conf.load_config(@config_file)
+    @conf = Divan::Configuration.load_config(@config_file)
   end
   
   after :each do
