@@ -37,7 +37,7 @@ class Divan::Configuration
         loginseq = db['username']+':'+db['password']+'@'
     end
     
-    db['protocol']+'://'+loginseq+db['host']+':'+db['port']+'/'+db['db']+'/'
+    db['protocol']+'://'+loginseq+db['host']+':'+db['port'].to_s+'/'+db['db']+'/'
   end
 
 
@@ -47,19 +47,18 @@ class Divan::Configuration
     env = Rails.env if defined? Rails
     
     if !@@config.include?(usertype) || !@@config[usertype].include?(env) || @@config[usertype][env].nil?
-      databaseuri = {'protocol'=>'http', 'username'=>'', 'password'=>'', 'host'=>'localhost', 'port'=>'5984', 'db'=>'divan-'+env}
+      conf = {}
     else
-      par = @@config[usertype][env]
-      protocol = par['protocol'] || 'http'
-      host = par['host'] || 'localhost'
-      port = par['port'] || '5984'
-      db = par['database'] || 'divan-'+env
-      username = par['username'] || ''
-      password = par['password'] || ''
-
-      databaseuri = {'protocol'=>protocol, 'username'=>username, 'password'=>password, 'host'=>host, 'port'=>port, 'db'=>db}
+      conf = @@config[usertype][env]
     end
+    
+    protocol = conf['protocol'] || 'http'
+    host = conf['host'] || 'localhost'
+    port = conf['port'] || 5984
+    db = conf['database'] || 'divan-'+env
+    username = conf['username'] || ''
+    password = conf['password'] || ''
+
+    databaseuri = {'protocol'=>protocol, 'username'=>username, 'password'=>password, 'host'=>host, 'port'=>port, 'db'=>db}
   end
-
-
 end

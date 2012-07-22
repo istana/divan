@@ -70,8 +70,7 @@ describe Divan::Configuration do
     confhash = @conf.process_config
     confhash.should == {
       'protocol'=>'https', 'username'=>'login', 'password'=>'password1',
-      'host'=>'example.org', 'port'=>'5986', 'db'=>'softdivan'
-    
+      'host'=>'example.org', 'port'=>5986, 'db'=>'softdivan'
     }
   end
   
@@ -79,8 +78,18 @@ describe Divan::Configuration do
     confhash = @conf.process_config('dbadmin')
     confhash.should == {
       'protocol'=>'http', 'username'=>'', 'password'=>'', 
-      'host'=>'localhost', 'port'=>'1111', 'db'=>'divan-test'
+      'host'=>'localhost', 'port'=>1111, 'db'=>'divan-test'
     }
+  end
+  
+  it 'tests nonexistent settings in file' do
+    ENV['RACK_ENV'] = 'production'
+    confhash = @conf.process_config('dbadmin')
+    confhash.should == {
+      'protocol'=>'http', 'username'=>'', 'password'=>'', 
+      'host'=>'localhost', 'port'=>5984, 'db'=>'divan-production'
+    }
+    ENV['RACK_ENV'] = 'test'
   end
   
   it 'checks persistence of loaded configuration file' do
@@ -119,6 +128,4 @@ describe Divan::Configuration do
   it 'checks correct output of database dbadmin (fallback)' do
     @conf.database('dbadmin').should == 'divan-test'
   end
-
-
 end
