@@ -1,22 +1,29 @@
-module Divan::Common
-  # accessors use is needed for it to work both in include and extend style
+module Divan::Misc
   def dbinfo
-    rawget(database)
+    self.get('').parsed_response
   end
   
   def database?
-    res = rawget(database)
-    puts res.inspect
-    # TODO watch
-    res.errors.nil?
+    res = self.get('')
+    res.success?
   end
   
-  def database!
-    res = rawget(database)
-    puts res.inspect
+end
+
+class Divan::DBAdmin
+  include HTTParty
+  
+  base_uri Divan::Configuration.dbstring('dbadmin')
+  
+  headers 'Accept' => 'application/json'
+  format :json
+  
+  def self.database!
+    base_uri Divan::Configuration.dbstring('dbadmin')
+    res = self.get('')
     if res.code == 404
-      res_created_db = rawput(database)
-      if res_created_db.errors.nil? && res_created_db.result['ok']==true
+      created_db = self.put('')
+      if created_db.success? && created_db.parsed_response['ok']==true
         true
       else
         false
