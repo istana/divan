@@ -58,9 +58,6 @@ class Divan::Document
     end
     
     d = get('/'+id, :query => options.merge(params))
-    puts d
-    puts base_uri
-    puts Divan::Configuration.dbstring
     if d.success?
       if options.has_key?(:raw)
         d
@@ -69,7 +66,7 @@ class Divan::Document
         const_defined?(d.parsed_response['type']) ? const_get(type).new(d) : Document.new(d)
       end
     else
-      raise("DivanDocumentRetrievalError", "Document could not be fetched from CouchDB, status:"+d.code.to_s+"message:"+d.message)
+      raise("Document could not be fetched from CouchDB, status:"+d.code.to_s+"message:"+d.message)
     end
   end
   
@@ -87,6 +84,10 @@ class Divan::Document
     # confl because conflict could exist as field of document
     @confl = false
     populate
+  end
+  
+  def clone
+  #TODO:
   end
   
   class << self
@@ -119,25 +120,38 @@ class Divan::Document
   def save(options = {})
     doc = self.document
     id = doc.delete('_id')
+    pacify_blank(id)
     @last_request = self.class.put('/'+id, :query => options, :body => MultiJson.dump(doc))
     
     #TODO:logger.debug '('+self.base_uri+') Document save:' + @last_request
     
     if @last_request.conflict?
       @confl = true
-      raise("Conflict", "Document conflict!")
+      raise("Document conflict!")
+      return false
     end
     
     if @last_request.success? && @last_request.parsed_response['ok']==true
-      instance_variable_set :@_rev, @last_request.parsed_response['rev']
-    else
-      return false
+      if self.respond_to? :_rev
+        instance_variable_set :@_rev, @last_request.parsed_response['rev']
+      else
+       add_field(:_rev, @last_request.parsed_response['rev'])
+      end
+      return true
     end
-    true
+    raise("Error saving document!")
   end
   
+  def destroy
+    return self if self.new?
+    raise("Revision is old!") unless self.latest?
+    @last_request = self.class.delete('/'+@_id, :query => {:rev => @_rev})
+    raise("Error destroying document!") unless @last_request.success?
+    self
+  end
+    
   # I don't expect to use this much, so this primitivity would be enough
-  def return_reloaded
+  def return_original
     if new?
       return self.class.new(@original_doc)
     else
@@ -147,7 +161,9 @@ class Divan::Document
 
   ###
   def populate
-    @original_doc.each do |key, value|
+    # deep copy
+    doc = Marshal.load(Marshal.dump(@original_doc))
+    doc.each do |key, value|
       add_field(key, value)
     end
   end
@@ -155,7 +171,8 @@ class Divan::Document
   # TODO attr_protected
   def add_field(f, val)
     f = f.to_s
-    unless f.empty? || instance_variable_defined?("@#{f}")
+    pacify_blank(f)
+    unless instance_variable_defined?("@#{f}")
       self.instance_variable_set "@#{f}", val
       # probably not
       #alias_method "alias_#{f}", f if self.respond_to? f.to_sym
@@ -169,19 +186,22 @@ class Divan::Document
       end
       @fields << f.to_s
     else
-      raise("ArgumentError", "field name cannot be nil or this field exists already")
+      raise(ArgumentError, "This field exists already")
     end
   end
   
   def remove_field(f)
     f = f.to_s
-    if !f.empty? && self.respond_to?(f.to_sym) && self.respond_to?("#{f}=".to_sym) && instance_variable_defined?("@#{f}".to_sym)
-      #class << self
-        remove_method "#{f}=".to_sym
-        remove_method f.to_sym
-      #end
+    pacify_blank(f)
+    if self.respond_to?(f.to_sym) && self.respond_to?("#{f}=".to_sym) && instance_variable_defined?("@#{f}".to_sym)
+      eigenclass = ( class << self; self; end )
+      eigenclass.send(:"undef_method", "#{f}=".to_sym)
+      eigenclass.send(:"undef_method", f.to_sym)
+       
       remove_instance_variable "@#{f}".to_sym
-      @field.delete(f.to_s)
+      @fields.delete(f.to_s)
+    else
+      raise(ArgumentError, "This field doesn't exist")
     end
   end
   
@@ -207,13 +227,13 @@ class Divan::Document
   ### REVISIONS
   def return_latest_revision
     return false if self.new?
-    http_response = self.head('/'+@_id)
-    if http_response.success?
-      return http_response['etag']
-    else
-      # well, this should exist always unless played with _id
-      raise("DivanDocumentRetrievalError", "Document could not be fetched from CouchDB")
-    end
+    pacify_blank @_id
+    
+    http_response = self.class.head('/'+@_id)
+    (return http_response['etag'].gsub('"', '')) if http_response.success?
+      
+     # well, this should exists always unless played with _id
+     raise("Document could not be fetched from CouchDB")
   end
   
   def latest?
@@ -231,76 +251,83 @@ class Divan::Document
     self.respond_to? :_attachments
   end
   
-  def show_attachments
-    if self.instance_variable_defined '@_attachments'.to_sym
+  def attachments
+    if self.instance_variable_defined? '@_attachments'.to_sym
       return @_attachments
     else
-      return nil
+      return {}
     end
   end
   
   def attachment(identifier)
-    raise('ArgumentError', 'File identifier cannot be blank') if identifier.empty?
+    identifier = identifier.to_s
+    pacify_blank(identifier)
+    pacify_blank(@_id)
     result = self.class.get('/'+@_id+'/'+identifier, :headers => {'Accept'=>'*/*'})
     
-    if result.success?
-      result.body
-    else
-      false
-    end
+    (return result.body) if result.success?
+    raise("Attachment doesn't exist (probably) code:"+result.code.to_s)
   end
   
   def add_attachment(identifier, file, options = {})
+    identifier = identifier.to_s
+    pacify_blank(identifier)
+    pacify_blank(@_id)
+    
     if file.is_a?(File) || file.is_a?(StringIO)
       file = file.read
     end
     
-    identifier = identifier.to_s
+    # HTTParty (or something inside) calls bytesize on object
+    raise(ArgumentError, "Cannot call 'bytesize' on object") if !(file.respond_to? :bytesize)
     
-    # is dangerous if identifier has only whitespace characters
-    # probably it deletes document...
-    raise('ArgumentError', 'File identifier cannot be blank') if identifier.blank?
-    
-    mimetype = options[:mimetype]
+    mimetype = options[:mime]
     mimetype ||= 'text/plain'
     
     query = (self.new? ? {} : {:rev => @_rev})
-    
-    # HTTParty (or something inside) calls bytesize on object
-    raise('ArgumentError', "Cannot call 'bytesize' on object") if !(file.respond_to? :bytesize)
     
     result = self.class.put('/'+@_id+'/'+identifier, :headers => {'Content-Type' => mimetype}, :query => query, :body => file)
     
     if result.success? && result.parsed_response['ok']==true
       # replenish revision
-      instance_variable_set :_rev, rev.parsed_response['_rev']
-      # not sure, how populate attachments better
-      # there are properties like length and digest
+      instance_variable_set :@_rev, result.parsed_response['rev']
+      # not sure, how populate attachments better...
+      # there are properties like length and digest, which are calculated by server
       # not updating whole document
       new_doc = self.class.get('/'+@_id, :query => {:rev=>@_rev})
       if new_doc.success?
-        remove_field(:_attachments) if self.respond_to? :_attachments
+        remove_field(:_attachments) if self.respond_to?(:_attachments)
         add_field(:_attachments, new_doc.parsed_response['_attachments'])
       else
         # has to be very busy day
-        raise("DivanDocumentRetrievalErrorAttachment", "This revision doesn't exists in database. Document is old and you should reload it completely.")
+        raise("This revision doesn't exists in database. Document is old and you should reload it completely.")
       end
-    else
-      return false
+      return true
     end
-    true
+    raise("Error when saving attachment")
   end
   
   def delete_attachment(identifier)
-    raise('ArgumentError', 'File identifier cannot be blank') if identifier.empty?
-    result = self.class.delete('/'+@_id+'/'+identifier)
+    identifier = identifier.to_s
+    pacify_blank(identifier)
+    pacify_blank(@_id)
+    
+    query = (self.new? ? {} : {:rev => @_rev})
+    result = self.class.delete('/'+@_id+'/'+identifier, :query => query)
     
     if result.success? && result.parsed_response['ok']==true
-      instance_variable_set :_rev, rev.parsed_response['_rev']
+      instance_variable_set :@_rev, result.parsed_response['rev']
       
-      @_attachments.delete[identifier]
+      @_attachments.delete(identifier)
+      return true
     end
+    raise("Error removing attachment")
   end
-
+  
+  ##############
+  def pacify_blank(what)
+    raise(ArgumentError, 'String cannot be blank') if what.blank?
+    true
+  end
 end
 
