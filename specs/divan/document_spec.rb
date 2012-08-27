@@ -138,17 +138,17 @@ describe Divan::Document do
     @doc.add_attachment("attachment1", "This is attachment").should == true
     @doc.attachment("attachment1").should == "This is attachment"
     
-    File.open("the_painter_insomnia_stock.jpg") do |img|
+    File.open("the_painter_insomnia_stock_small.jpg") do |img|
       @doc.add_attachment("the_painter.jpg", img, :mime => 'image/jpeg').should == true
     end
-    File.open("after_soranamae.png") do |img|
+    File.open("after_soranamae_small.png") do |img|
       @doc.add_attachment("after.png", img, :mime => 'image/png').should == true
     end
     
     @doc.attachments.should == @doc['_attachments']
     
     @doc['_attachments']['the_painter.jpg']['content_type'].should == 'image/jpeg'
-    @doc['_attachments']['the_painter.jpg']['length'].should == 4173074
+    @doc['_attachments']['the_painter.jpg']['length'].should == 145880
 
     @doc.delete_attachment('the_painter.jpg').should == true
     expect{@doc.attachment('the_painter.jpg')}.to raise_error(RuntimeError)
