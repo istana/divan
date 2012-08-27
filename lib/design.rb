@@ -1,34 +1,55 @@
 require 'digest/sha1'
-require 'digest/md5'
-require_relative './validations.rb'
-require_relative './common.rb'
-require_relative './comm.rb'
 
 class Divan::Design
+  include HTTParty
+  headers 'Content-Type' => 'application/json', 'Accept' => 'application/json'
+  format :json
+  base_uri Divan::Configuration.dbstring('dbadmin')
+  
+  
+  @@views = {}
+  @@validations = []
+#    @shows={}    
+  
+  ['associations', 'security'
+  ].each do |file|
+    require_relative File.join('.', 'design', file + '.rb')
+  end
+  
+  extend Associations
+  include Security
   #include Validations
   #include Common
-  extend ::Divan::Comm
-  extend ::Divan::Common
+  #extend ::Divan::Comm
+  #extend ::Divan::Common
   
-  #attr_reader :id, :language, :validations, :views, :shows
-  #attr_accessor :database
+   def self.type
+    self.to_s
+  end
   
+  def self._id
+    '_design/'+self.type
+  end
   
-  @@id='_design/'+self.class.to_s
-  @@language='javascript'
-  @@views={}
-  @@validations=[]
-#    @shows={}
-#    @uberdoc={}
-  @@database = ::Divan::Configuration.dbstring('dbadmin')
+  def self.document
+    return 'Divan::Document' if type == 'Divan::Design'
+    type.gsub('Design', '')
+  end
   
+  def self.language
+    'javascript'
+  end
+    
+
+
   # generates json of whole design document
   def self.uberdoc
     {
       #'_id' => @id,
-      :language => @@language,
+      :language => language,
       # should return string
-      :validate_doc_update => ''
+      :validate_doc_update => '',
+      :views => @@views
     }
 =begin
 <<EOT
@@ -40,53 +61,57 @@ EOT
 =end
   end
   
-  def self.database
-    @@database
-  end
-  
-  
   def self.validate_doc_update
     @@validations.join("\n\n")
   end
   
   
-  def self.avail_views
+  def self.views
     @@views.keys
   end
 
   def self.info
-    rawget(@@database+'_design/'+@@type+'/_info')
+    x = get('/_design/'+type+'/_info')
+    return x.parsed_response if x.success?
+    raise("Database info cannot be find out, HTTP code: " + x.code.to_s)
   end
   
-
-  
   def self.sync?
-    # TODO use HEAD?
-    design = rawget(@@database+@@id)
-    if design.code == 404
-      return true
-    elsif !design.errors.nil?
-      raise("TODO some error")
-    else
-      # cannot use mvcc checksum, because it takes into account
-      # previous versions (hashes) of document
-      checksum_local = Digest::SHA256.hexdigest(uberdoc.jsonencode)
-      checksum_remote = design[:divanchecksum]
-      return true if checksum_remote.nil?
-      return (checksum_remote==checksum_local ? false : true)
-    end
+    design = get('/' + _id)
+    
+    return true if design.code == 404 && design.parsed_response['reason'] == 'missing'
+    raise("Design document cannot be fetched") unless design.success?
+    
+    # cannot use mvcc checksum, because it takes into account
+    # previous versions (hashes) of document
+    checksum_local = Digest::SHA256.hexdigest(MultiJson.dump(uberdoc))
+    checksum_remote = design.parsed_response['divanchecksum']
+    
+    return true if checksum_remote.nil?
+    return (checksum_remote==checksum_local ? false : true)
   end
   
   def self.sync
     if sync?
-      checksum = Digest::SHA256.hexdigest(uberdoc.jsonencode)
-      design = uberdoc.merge({:divanchecksum=>checksum})
-      design_remote = rawget(@@database+@@id)
-      design = design.merge({:_rev=>design_remote[:_rev]}) if design_remote.errors.nil?
-      result = rawput(@@database+@@id, design)
-      return result[:ok]==true ? result : false
-    else
-      return false
+      checksum = Digest::SHA256.hexdigest(MultiJson.dump(uberdoc))
+      design = uberdoc.merge({'divanchecksum' => checksum})
+      
+      design_remote = get('/' + _id)
+      
+      if design_remote.code == 404
+        # design don't exists in database
+        if design_remote.parsed_response['reason'] == 'no_db_file'
+          raise("Database doesn't exist")
+        end
+        
+        result = put('/' + _id, :body => MultiJson.dump(design))
+        return true if result.success?
+      elsif design_remote.success?
+        rev = design_remote.parsed_response['_rev']
+        result = put('/' + _id, :query => {:rev => rev}, :body => MultiJson.dump(design))
+        return result.parsed_response['rev'] if result.success?
+      end
     end
+    return false
   end
 end 

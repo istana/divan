@@ -1,0 +1,10 @@
+
+
+  ### "http://rest-test.heroku.com/some/resource"
+  #RestClient.post 'http://myphotosite.com/users/adam/photos', File.read('pic.jpg'), :content_type => 'image/jpg'
+  #RestClient.put "http://rest-test.heroku.com/some/resource", home['pic.jpg'].contents, :content_type => 'image/jpg'
+  ### curl -v -X PUT "http://localhost:5984/conan/juhu/priloha?rev=1-f6787c9d811057fd958bd4857b47834d" -d "Som dobry alebo som dobry?" -H "Content-Type: text/plain"
+  ### require './divan.rb'; a=Document.fetch "919156c7f24bb77528e409eb0a7c25a9"
+  ### a=HTTParty.get "http://localhost:5984/divan_development/919156c7f24bb77528e409eb0a7c25a9" 
+
+base_uri 'http://localhost:5984/database

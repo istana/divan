@@ -9,7 +9,7 @@ Divan::Configuration.load_config(File.join(File.dirname(__FILE__), '..','lib','c
 # Replenish configuration for parts, that uses HTTParty
 Divan::Document.base_uri Divan::Configuration.dbstring
 Divan::DBAdmin.base_uri Divan::Configuration.dbstring('dbadmin')
-#Divan::Design.base_uri Divan::Configuration.dbstring
+Divan::Design.base_uri Divan::Configuration.dbstring('dbadmin')
 #require File.join(File.dirname(__FILE__), '..','lib','design.rb')
 
 

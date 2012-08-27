@@ -7,7 +7,25 @@ module Divan::Misc
     res = self.get('')
     res.success?
   end
+end
+
+require 'cgi'
+module Divan::Support
+  def pacify_blank(what)
+    raise(ArgumentError, 'String cannot be blank') if what.blank?
+    true
+  end
   
+  def uri_encode(string)
+    #URI::encode(string)
+    # cgi encodes / (slash)
+    ::CGI.escape(string)
+  end
+  
+  # I can call it directly
+  module_function :uri_encode
+  # if function is module_function, in mixin it is private
+  public :uri_encode
 end
 
 class Divan::DBAdmin
@@ -53,4 +71,6 @@ class Object
     false 
   end
 end
+
+
 
