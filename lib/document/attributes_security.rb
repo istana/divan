@@ -5,8 +5,8 @@ module Divan::Document::AttributesSecurity
     # design document is defined
     if design?
       group = options[:as] || 'default'
-      fprot = design.class_variable_get :@@protected_fields
-      faccess = design.class_variable_get :@@accessible_fields 
+      fprot = design.protected_fields
+      faccess = design.accessible_fields
       
       # group even doesn't exist
       # do not modify original variables
