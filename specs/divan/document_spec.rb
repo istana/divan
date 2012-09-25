@@ -30,6 +30,12 @@ describe Divan::Document do
     doc2 = Divan::Document.neo({'_id' => 'some_id', 'foo' => 'bar', 'key' => [1,2]})
     doc2.fields.should == {'foo' => 'bar', 'key' => [1,2], '_id' => 'some_id'}
   end
+  
+  it 'tests field existence' do
+    @doc.field?('foo').should == true
+    @doc.field?('nonexistent').should == false
+  end
+  
   it 'tests field write' do
     @doc['foo'] = 'baz'
     @doc['foo'].should == 'baz'

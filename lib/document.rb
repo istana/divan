@@ -28,7 +28,7 @@ class Divan::Document
   # random unique ID is assigned, if not given
   # can also call Divan::Document.new with hash
   # which contains type and id
-  def self.neo(fields = {})
+  def self.neo(fields = {}, options = {})
     if !fields.has_key?('_id') || fields['_id'].blank?
       fields['_id'] = SecureRandom.uuid
     end
@@ -37,7 +37,7 @@ class Divan::Document
     if !fields.has_key?('type') && self.type != "Divan::Document"
       fields['type'] = self.type
     end
-    self.new(fields)
+    self.new(fields, options)
   end
   
   # options - see special fields
@@ -102,10 +102,16 @@ class Divan::Document
     @doc
   end
   
+  def field?(name)
+    name = name.to_s
+    pacify_blank(name)
+    @doc.has_key? name
+  end
+  
   def field(name)
     name = name.to_s
     pacify_blank(name)
-    if @doc.has_key? name
+    if field? name
       @doc[name]
     else
       raise('Field does not exist')
