@@ -1,5 +1,5 @@
 ---
-dbreader:
+reader:
   test:
     protocol: https
     host: example.org
@@ -11,7 +11,12 @@ dbreader:
     foo: bar
   production:
     lounge: on divan
-dbadmin:
+admin:
   development: 
   test:
+    protocol: http
+    host: example.net
     port: 1111
+    database: harddivan
+    username: login
+    password: password2
