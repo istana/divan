@@ -1,176 +1,120 @@
-# -*- encoding : utf-8 -*-
+# Taken from Tire::Results::Item
+# but modified
+require 'active_model'
+require 'securerandom'
 
-require_relative './common.rb'
+module Divan
+    class Document
+      extend  ActiveModel::Naming
+      include ActiveModel::Conversion
 
-require 'httparty'
+			require_relative './document/couchdb.rb'
+			include CouchDB
 
-class Divan::Document
-  include HTTParty
+      # Create new instance, recursively converting all Hashes to Item
+      # and leaving everything else alone.
+      #
+      def initialize(args={})
+        raise ArgumentError, "Please pass a Hash-like object" unless args.respond_to?(:each_pair)
+        @attributes = {}
+        args.each_pair do |key, value|
+          if value.is_a?(Array)
+            @attributes[key.to_sym] = value.map { |item| @attributes[key.to_sym] = item.is_a?(Hash) ? Document.new(item.to_hash) : item }
+          else
+            @attributes[key.to_sym] = value.is_a?(Hash) ? Document.new(value.to_hash) : value
+          end
+        end
 
-  ['attachments.rb', 'dbcomm.rb', 'revisions.rb',
-   'attributes_security.rb', 'associations.rb'
-  ].each do |file|
-    require_relative File.join('.', 'document', file)
-  end
-  include Attachments
-  include Dbcomm
-  include Revisions
-  include AttributesSecurity
-  include Associations
-  include ::Divan::Support
-  
-  headers 'Content-Type' => 'application/json', 'Accept' => 'application/json'
-  format :json
-  base_uri Divan::Configuration.dbstring
-  
-  # new record, which is not in database
-  # or mapped document from view
-  # random unique ID is assigned, if not given
-  # can also call Divan::Document.new with hash
-  # which contains type and id
-  def self.neo(fields = {}, options = {})
-    if !fields.has_key?('_id') || fields['_id'].blank?
-      fields['_id'] = SecureRandom.uuid
-    end
-    
-    # automatically add type, if not set to stock class name
-    if !fields.has_key?('type') && self.type != "Divan::Document"
-      fields['type'] = self.type
-    end
-    self.new(fields, options)
-  end
-  
-  # options - see special fields
-  # another options is :all => whatever, which fetches all (available) special fields
-  def self.fetch(id, options = {})
-    params = {:deleted => true, :conflicts => true}
-    if options.has_key? :all
-      options = {:revs => true, :revs_info => true, :deleted_conflicts => true, :local_seq => true}
-    end
-    
-    d = get('/' + Divan::Support.uri_encode(id), :query => options.merge(params))
-    if d.success?
-        type = d.parsed_response['type'] || 'Divan::Document'
-        const_defined?(type) ? const_get(type).new(d, :without_protection => true) : Document.new(d, :without_protection => true)
-    else
-      raise("Document could not be fetched from CouchDB, status:"+d.code.to_s+"message:"+d.message)
-    end
-  end
-  
-  def initialize(doc, options = {})
-    @doc = {}
-    
-    # HTTParty object
-    # to access request, status code and like that
-    @last_request = doc
-    
-    #populate_associations
-    populate_fields(doc, options)
-  end
-  
-  # HTTParty object
-  # can call request, code, response, parsed_response, headers, message (like OK or Object not found)
-  # or success?, forbidden? (see HTTParty specs)
-  def lastreq
-    @last_request
-  end
+				# Assigning ID here is important to prevent
+				# CouchDB to assign different UUIDs
+				# in case of more same requests
+				if @attributes[:_id]
+					@attributes[:_id] = SecureRandom.uuid
+				end
 
-  def new?
-    not @doc.key?('_rev')
-  end
-  
-  def deleted?
-     @doc.key? '_deleted' && @doc['_deleted'] == true
-  end
-    
-  ###
-  def populate_fields(doc, options = {})
-    # this is for documents fetched from database
-    if options[:without_protection] == true
-      @doc = doc
-    else
-      # protection against mass assignment
-      # like in rails use assign_attributes for using other roles
-      doc.delete_if { |key, value| attr_protected?(key) }
-      @doc = doc
-    end
-  end
+				if self.type.nil? && self.class.name != 'Divan::Document'
+					@attributes[:type] = self.class.name
+				end
+      end
 
-  ######
-  
-  def fields
-    @doc
-  end
-  
-  def field?(name)
-    name = name.to_s
-    pacify_blank(name)
-    @doc.has_key? name
-  end
-  
-  def field(name)
-    name = name.to_s
-    pacify_blank(name)
-    if field? name
-      @doc[name]
-    else
-      raise('Field does not exist')
+      # Delegate method to a key in underlying hash, if present, otherwise return +nil+.
+      #
+      def method_missing(method_name, *arguments)
+				# write attribute
+				if method_name.to_s[-1] == '=' && arguments.size == 1
+					attribute = method_name.to_s.chop
+					value = arguments.first
+					@attributes[attribute.to_sym] = value.is_a?(Hash) ? Document.new(value) : value
+				end
+        @attributes[method_name.to_sym]
+      end
+
+      def respond_to?(method_name, include_private = false)
+				# answering to any write method
+				if method_name.to_s[-1] == '='
+					return true
+				end
+        @attributes.has_key?(method_name.to_sym) || super
+      end
+
+      def [](key)
+        @attributes[key.to_sym]
+      end
+
+      def id
+        @attributes[:_id]
+      end
+
+      def type
+        @attributes[:type]
+      end
+
+      def persisted?
+        !!id
+      end
+
+      def errors
+        ActiveModel::Errors.new(self)
+      end
+
+      def valid?
+        true
+      end
+
+      def to_key
+        persisted? ? [id] : nil
+      end
+
+      def to_hash
+        @attributes.reduce({}) do |sum, item|
+          sum[ item.first ] = item.last.respond_to?(:to_hash) ? item.last.to_hash : item.last
+          sum
+        end
+      end
+
+			alias_method :to_h, :to_hash
+
+      def as_json(options=nil)
+        hash = to_hash
+        hash.respond_to?(:with_indifferent_access) ? hash.with_indifferent_access.as_json(options) : hash.as_json(options)
+      end
+
+      def to_json(options=nil)
+        as_json.to_json(options)
+      end
+      alias_method :to_indexed_json, :to_json
+
+      # Let's pretend we're someone else in Rails
+      #
+      def class
+        defined?(::Rails) && @attributes[:type] ? @attributes[:type].camelize.constantize : super
+      rescue NameError
+        super
+      end
+
+      def inspect
+        s = []; @attributes.each { |k,v| s << "#{k}: #{v.inspect}" }
+        %Q|<Item#{self.class.to_s == 'Tire::Results::Item' ? '' : " (#{self.class})"} #{s.join(', ')}>|
+      end
     end
-  end
-  
-  alias_method '[]'.to_sym, :field
-  
-  def field=(name, value)
-    pacify_blank(name)
-    @doc[name] = value
-  end
-  
-  alias_method '[]='.to_sym, 'field='.to_sym
-  
-  def length
-    @doc.length
-  end
-  
-  def delete(field)
-    field = field.to_s
-    pacify_blank(field)
-    if @doc.has_key? field
-      @doc.delete(field)
-    else
-      raise('Field does not exist')
-    end
-  end
-  ######
-  def self.type
-    self.to_s
-  end
-  def type
-    (@doc['type'] rescue nil) || self.class.type
-  end
-  
-  def design_string
-    if type == 'Divan::Document'
-      x = 'Divan::Design'
-    else
-      x = type + "Design"
-    end
-    x
-  end
-  
-  def design
-    # NameError:
-    # wrong constant name Divan::Design
-    #self.class.const_get(design_string)
-    ActiveSupport::Inflector.constantize(design_string)
-  end
-  
-  def design?
-    begin  
-      design
-    rescue Exception => e
-      return false
-    end
-    true
-  end
 end
-
