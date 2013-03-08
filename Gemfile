@@ -1,9 +1,8 @@
 source 'https://rubygems.org'
 
-gem 'yajl-ruby'
+gem 'oj'
 gem 'multi_json'
-
-gem 'httparty'
+gem 'typhoeus'
 gem 'activesupport'
 
-gem 'rspec' 
+gem 'rspec', group: [:test, :development]
