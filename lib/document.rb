@@ -14,6 +14,7 @@ module Divan
       # Create new instance, recursively converting all Hashes to Item
       # and leaving everything else alone.
       #
+			# TODO: track depth
       def initialize(args={})
         raise ArgumentError, "Please pass a Hash-like object" unless args.respond_to?(:each_pair)
         @attributes = {}
@@ -25,16 +26,11 @@ module Divan
           end
         end
 
-				# Assigning ID here is important to prevent
-				# CouchDB to assign different UUIDs
-				# in case of more same requests
-				if @attributes[:_id]
-					@attributes[:_id] = SecureRandom.uuid
-				end
-
 				if self.type.nil? && self.class.name != 'Divan::Document'
 					@attributes[:type] = self.class.name
 				end
+
+				@dburi = Divan::Support::Configuration.uri
       end
 
       # Delegate method to a key in underlying hash, if present, otherwise return +nil+.
