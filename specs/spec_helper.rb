@@ -3,5 +3,6 @@ require "rspec"
 
 ENV['RACK_ENV'] = 'test'
 require_relative "../lib/divan.rb"
-::Divan::Support::Configuration.load_config("./data/config/couchdb.yaml")
+dbfile = File.join(File.dirname(__FILE__), "couchdb.yaml")
+::Divan::Support::Configuration.load_config(dbfile)
 
