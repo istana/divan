@@ -9,7 +9,7 @@ module Divan
 	require_relative './support/configuration.rb'
 #	require_relative './common.rb'
 #	require_relative './design.rb'
-#	require_relative './document.rb'
+	require_relative './document.rb'
 	
 	def byId(id, options = {})
 		pacify_blank(id)
