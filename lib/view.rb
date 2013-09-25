@@ -1,29 +1,49 @@
-class Divan::View
-  include HTTParty
+class Divan
+
+	class View
+		def database
+			Divan::Support::Configuration.uri
+		end
+		
+		
   
   headers 'Content-Type' => 'application/json', 'Accept' => 'application/json'
   format :json
   base_uri Divan::Configuration.dbstring
   
   def self.fetch(design, view, options)
-    result = get('/_design/' + design + '/_view/' + view, :params => options)
-    if result.success?
-      return result.parsed_response
+    view_docs = ::Typhoeus.get(database + '/_design/' + uri_encode(design) + '/_view/' + uri_encode(view), params: options)
+    
+    if view_docs.success?
+    	::MultiJson.load(view_docs.body)
+    else
+    	raise("Error getting view #{view} from design #{design}")
     end
-    raise('View couldn\'t be saved')
   end
   
-  def self.fetch_mapped(design, view, options)
-    result = get('/_design/' + design + '/_view/' + view, :params => options)
-    if result.success?
-      mapped = []
-      result.parsed_response.each do |doc|
-        mapped << Divan::Document.neo(doc)
-      end
-      mapped
-    end
-    raise('View couldn\'t be saved')
+  def self.fetch_mapped(*args)
+  	result = fetch(args)
+  	result.map {|doc| Document.new(doc) }
   end
+  
+  	def initialize(request, options = {})
+		@documents = []
+		@metadata = OpenStruct.new
+		@docmap = options[:docmap] || true
+	
+		for document in request.delete['rows']
+			if @docmap
+				@documents << ::Divan::Document.new(document)
+			else
+				@documents << document
+			end
+		end
+# TODO slice (whitelist metadata in request)
+		request.each_pair do |meta, data|
+			@metadata.meta = data
+		end
+	end
+  
 # TODO create methods returning raw result(s)?  
 # design doc, view, optional - key/startkey+endkey, descending (true), group (true), include_docs (true)
 =begin
@@ -45,3 +65,4 @@ inclusive_end
 update_seq 
 =end
 end 
+end

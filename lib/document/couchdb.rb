@@ -36,11 +36,11 @@ module Divan::Document::CouchDB
 
 	# Revisions
 	#
-	def return_latest_revision
+	def latest_revision
 		return nil if self.new?
 		pacify_blank(_id)
 
-		req = Typhoeus.head(@dburi+uri_encode(_id))
+		req = Typhoeus.head(database + uri_encode(_id))
 
 		if req.success?
 			return req.headers['ETag'].gsub('"', '')
@@ -52,11 +52,15 @@ module Divan::Document::CouchDB
 
 	def latest?
 		return true if self.new?
-		_rev == return_latest_revision
+		_rev == latest_revision
 	end
 
 	def refresh_revision
-		self._rev = return_latest_revision unless self.new?
+		if self.new?
+			false
+		else
+			self._rev = latest_revision
+		end
 	end
 
 	def save(options = {})
@@ -71,17 +75,17 @@ module Divan::Document::CouchDB
 		id = doc.delete(:_id)
 		pacify_blank(id)
 
-		res = Typhoeus.put(@dburi + '/' + uri_encode(id),
+		res = Typhoeus.put(database + '/' + uri_encode(id),
 									params: options,
 									body: MultiJson.dump(doc)
-								)
+							)
 
-		body =  MultiJson.load(res.body)
+		res_body =  MultiJson.load(res.body)
 		# Conflict
 		if res.code == 409
 			raise('Document conflict')
-		elsif res.success? && body['ok'] == true
-			self._rev = body['rev'] 
+		elsif res.success? && res_body['ok'] == true
+			self._rev = res_body['rev'] 
 			return true
 		else
 			raise('Error saving document, code: ' + res.code.to_s)
@@ -91,19 +95,21 @@ module Divan::Document::CouchDB
 	def destroy
 		return self if self.new?
 		raise("Revision is old!") unless self.latest?
-		@last_request = self.class.delete('/' + uri_encode(@doc['_id']), :query => {:rev => @doc['_rev']})
-		raise("Error destroying document!") unless @last_request.success?
+		res = Typhoeus.delete(database + '/' + uri_encode(_id),
+										params: { rev: @doc['_rev'] }
+							)
+		raise("Error destroying document!") unless res.success?
 		self
 	end
 
 	def attachments?
-		!_attachments.nil?
+		!!_attachments
 	end
 
 	def attachment(id)
 		id = id.to_s
-		pacify_blank(id, self._id)
-		res = Typhoeus.get(@dburi + uri_encode(self._id) + '/' + uri_encode(id), headers: { Accept: '*/*' })
+		pacify_blank(id, _id)
+		res = Typhoeus.get(database + uri_encode(_id) + '/' + uri_encode(id), params: { 'Accept' => '*/*' })
 
 		if res.success?
 			return result.body
@@ -125,12 +131,12 @@ module Divan::Document::CouchDB
 		mimetype = options[:mime] || 'text/plain'
 
 		query = (self.new? ? {} : {rev: self._rev})
-		res = Typhoeus.put(@dburi + uri_encode(self._id) + '/' + uri_encode(id),
+		res = Typhoeus.put(database + uri_encode(self._id) + '/' + uri_encode(id),
 											 headers: { 'Content-Type' => mimetype },
 											 params: query,
 											 body: file
 											)
-		if res.success? && MultiJson.load(res.body)['ok'] == true
+		if res.success? && res.parsed_response['ok'] == true
 			#TODO: update rev
 			return true
 		else
@@ -143,8 +149,8 @@ module Divan::Document::CouchDB
 		pacify_blank(id, self._id)
 
 		query = (self.new? ? {} : {rev: self._rev})
-		res = Typhoeus.delete(@dburi + uri_encode(self._id) + '/' + uri_encode(id), params: query)
-		body = MultiJson.load(res.body)
+		res = Typhoeus.delete(database + uri_encode(self._id) + '/' + uri_encode(id), params: query)
+		body = res.parsed_response
 
 		if res.success? && body['ok'] == true
 			self._rev = body['rev']

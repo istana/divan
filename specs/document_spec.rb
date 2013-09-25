@@ -1,27 +1,26 @@
-require './spec_helper' 
+require_relative 'spec_helper'
 
 describe Divan::Document do
 	before :all do
 		class Foo < Divan::Document; end
-		dburi = Divan::Support::Configuration.uri('admin')
-		puts 'Database: ' + dburi.inspect
-		Typhoeus.delete(dburi)
-		res = Typhoeus.put(dburi)
+		@dburi = Divan::Support::Configuration.uri('admin')
+		puts 'Database: ' + @dburi.inspect
+		Typhoeus.delete(@dburi)
+		res = Typhoeus.put(@dburi)
 		raise('Problem creating database') if !res.success?
 	end
 
 	after :all do
+
 		#HTTParty.delete Divan::Configuration.dbstring('dbadmin')
 	end
 
-	describe 'New document' do
-		context 'without type class' do
-			it 'should be instance of Divan::Document' do
-				d = Divan::Document.new(foo: 'bar')
-				d.should be_an_instance_of(Divan::Document)
-			end
-
-			it 'creates new document without _id' do
+	before :each do 
+		@d = Divan::Document.new(foo: 'bar')
+	end
+	context 'Basics' do
+		describe '.new' do
+			it 'without "_id"' do
 				d = Divan::Document.new(foo: 'bar')
 				d._id.should be_nil
 				d.foo.should == 'bar'
@@ -29,105 +28,174 @@ describe Divan::Document do
 				d.nonexistent.should be_nil
 			end
 
-			it 'creates new document with _id' do
+			it 'with "_id"' do
 				d = Divan::Document.new(_id: 'I luv myself', foo: 'bar')
 				d._id.should == 'I luv myself'
 				d.foo.should == 'bar'
 				d.type.should be_nil
 				d.nonexistent.should be_nil
 			end
-		end
-		
-		context 'spawned from non-default class' do
-			it 'should be instance of class' do
-				d = Foo.new(foo: 'bar')
-				d.should be_an_instance_of(Foo)
+
+			context 'instantiated from Divan::Document (default)' do
+				it 'should be instance of Divan::Document' do
+					d = Divan::Document.new(foo: 'bar')
+					d.should be_an_instance_of(Divan::Document)
+				end
 			end
 
-			it 'creates new document without _id' do
-				d = Foo.new(foo: 'bar')
-				d._id.should be_nil
-				d.foo.should == 'bar'
-				d.type.should == 'Foo'
+			context 'instantiated from Foo' do
+				subject {Foo.new(foo: 'bar')}
+				it { should be_instance_of Foo }
+				its(:type) { should == 'Foo' }
+			end
+
+			it 'tests more complex document' do
+				d = Divan::Document.new(_id: 'how to fly',
+																categories: ['Mountaineering', 'Telekinesis'],
+																show: true,
+																points: 38.2,
+																snippets: {
+																	Levitation: 'levitation howto',
+																	'How to climb mount Everest' => 'bar'
+																}
+															 )
+				d._id.should == 'how to fly'
+				d.categories.should == ['Mountaineering', 'Telekinesis']
+				d.show.should == true
+				d.points.should == 38.2
+				d.snippets.to_h.should == {
+					Levitation: 'levitation howto',
+					:'How to climb mount Everest' => 'bar'
+				}
+				d.snippets.Levitation.should == 'levitation howto'
+				d.snippets.send(:'How to climb mount Everest').should == 'bar'
 				d.nonexistent.should be_nil
 			end
 
-			it 'creates new document with _id' do
-				d = Foo.new(_id: 'I luv myself', foo: 'bar')
-				d._id.should == 'I luv myself'
-				d.foo.should == 'bar'
-				d.type.should == 'Foo'
-				d.nonexistent.should == nil
+			it 'document is new' do
+				Divan::Document.new(foo: 'bar').new?.should == true
+			end
+
+			it "document isn't deleted" do
+				Divan::Document.new(foo: 'bar').deleted?.should == false
 			end
 		end
 
-		it 'creates more complex document' do
-			d = Divan::Document.new(_id: 'how to fly',
-															categories: ['Mountaineering', 'Telekinesis'],
-															show: true,
-															points: 38.2,
-															snippets: {
-																Levitation: 'levitation howto',
-																'How to climb mount Everest' => 'bar'
-															}
-														 )
-			d._id.should == 'how to fly'
-			d.categories.should == ['Mountaineering', 'Telekinesis']
-			d.show.should == true
-			d.points.should == 38.2
-			d.snippets.to_h.should == {
-				Levitation: 'levitation howto',
-				:'How to climb mount Everest' => 'bar'
-			}
-			d.snippets.Levitation.should == 'levitation howto'
-			d.snippets.send(:'How to climb mount Everest').should == 'bar'
+		it 'is possible to write fields' do
+			d = Divan::Document.new(foo: 'bar')
+			d.xxx = 'bla'
+			d.xxx.should == 'bla'
 			d.nonexistent.should be_nil
-		end
 
-		it 'is new' do
-			Divan::Document.new(foo: 'bar').new?.should == true
-		end
-
-		it "isn't deleted" do
-			 Divan::Document.new(foo: 'bar').deleted?.should == false
+			d.ha = {my: 'love', moja: 'laska'}
+			d.ha.to_h.should == {my: 'love', moja: 'laska'}
+			d.ha.my.should == 'love'
+			d.ha.moja.should == 'laska'
 		end
 	end
 
-	it 'is possible to write fields' do
-    d = Divan::Document.new(foo: 'bar')
-		d.xxx = 'bla'
-		d.xxx.should == 'bla'
-		d.nonexistent.should be_nil
+	context 'New document' do
+		subject { Divan::Document.new(foo: 'bar') }
 
-		d.ha = {my: 'love', moja: 'laska'}
-		d.ha.to_h.should == {my: 'love', moja: 'laska'}
-		d.ha.my.should == 'love'
-		d.ha.moja.should == 'laska'
-	end
-
-	describe 'save document' do
-		context 'new document' do
-			it 'without id' do
-				d = Divan::Document.new(foo: 'bar')
-				d.save.should == true
-				d._id.should_not be_nil
-				d._rev.should_not be_nil
+		describe '.save' do
+			context 'without id - add UUID as "_id"' do
+				subject do
+					d =  Divan::Document.new(foo: 'bar')
+					raise("Document couldn't be saved") if !d.save
+					d
+				end
+				its(:_id) { should_not be_nil }
+				its(:_rev) { should_not be_nil }
 			end
 
-			it 'with id' do
-				d = Divan::Document.new(_id: 'sneaky id', foo: 'bar')
-				d.save.should == true
-				d._id.should == 'sneaky id'
-				d._rev.should_not be_nil
+			context 'with "_id"' do
+				before :each do
+					@d =  Divan::Document.new(_id: 'sneaky id', foo: 'bar')
+					raise("Document couldn't be saved") if !@d.save
+				end
+				subject {@d}
+				its(:_id) { should == 'sneaky id' }
+				its(:_rev) { should_not be_nil }
 			end
 		end
+
+		describe 'Revision' do
+			its(:latest_revision) { should be_nil }
+			it { should be_latest }
+			it { subject.refresh_revision.should == false }
+		end
+	end
+
+	context 'Saved document' do
+
+	end
+
+	context 'Saved document with old revision' do
+
+	end
+
+
+	describe 'Revisions' do
 
 		context 'existing document' do
+			before :each do
+				@d.save
+			end
 
+			it '_rev is not nil' do
+				@d._rev.should_not be_nil
+			end
+
+			it 'is latest' do
+				@d.latest?.should == true
+			end
+
+			it 'latest revision is current revision' do
+				@d.latest_revision.should == @d._rev
+			end
+
+			it 'refreshes the same revision' do
+				@d.refresh_revision.should == @d._rev
+			end
+		end
+
+		context 'document with old revision' do
+			before :each do
+				x = @d.save
+				raise("Document couldn't be saved") if !x
+				@d.test = 'bar'
+				hash = @d.to_h
+				res = Typhoeus.put(@dburi + '/' + hash.delete(:_id),
+										 body: MultiJson.dump(hash),
+										 params: {_rev: hash['_rev']}
+										)
+				raise("Error") if !res.success?
+				@new_revision = MultiJson.load(res.body)['rev']
+			end
+
+			it '_rev is not nil' do
+				@d._rev.should_not be_nil
+			end
+
+			it 'is latest' do
+				@d.latest?.should == false
+			end
+
+			it 'latest revision is current revision' do
+				@d.latest_revision.should == @new_revision
+			end
+
+			it 'refreshes the same revision' do
+				@d.refresh_revision
+				@d._rev.should == @new_revision
+			end
+
+			it 'throws conflict when saved' do
+				expect { @d.save }.to raise_error(/conflict/)
+			end
 		end
 
 	end
-
 =begin
 	it 'is possible to fetch document by id' do
 
@@ -163,34 +231,6 @@ describe Divan::Document do
 		FooDesign = 'Something'
 		@doc.design?.should == true
 		Object.send :remove_const, :FooDesign
-	end
-
-	it 'tests revisions' do
-		@doc.latest?.should == true
-		@doc.return_latest_revision.should == false
-
-		@doc.save.should == true
-		# saved with another way, newer revision
-		result = @doc.class.put('/' + @doc['_id'], :body => MultiJson.dump(@doc.fields), :query => {:_rev => @doc['_rev']})
-		result.success?.should == true
-		newer_revision = result.parsed_response['rev']
-
-		@doc.latest?.should == false
-		@doc['_rev'].should_not == newer_revision
-		@doc.return_latest_revision.should == newer_revision
-
-		@doc.refresh_revision
-		@doc['_rev'].should == newer_revision
-	end
-
-	it 'tests conflict' do
-		# save to database
-		@doc.save.should == true
-		# change revision +1
-		result = @doc.class.put('/'+@doc['_id'], :body => MultiJson.dump(@doc.fields), :query => {:_rev => @doc['_rev']})
-		result.success?.should == true
-		# save with old revision
-		expect{@doc.save}.to raise_error(RuntimeError, 'Document conflict!')
 	end
 
 	it 'tests removal of document' do

@@ -5,70 +5,67 @@ module Divan::Design::Associations
   # separate documents
   # TODO: embedded documents - sorting problems
   # embedded: sort must be done before save
-  @@associations_has_many = []
-  @@associations_views_ass = {}
   
-  def self.extended(base)
-    p "Divan::Design::Associations extended in #{base}"
-    base.class_eval {
-      # class variables fun
-      @@has_many = @@associations_has_many
-      @@views = @@associations_views_ass
-    }
+  def inherited(subclass)
+    super
+    subclass.instance_variable_set :@has_many, []
+    subclass.instance_variable_set :@many_to_many, []
   end
   
-  def has_many(what, options = {})
-    what = what.to_s  
+  # adds quadruplet to @has_many with association details
+  def has_many(ofwhat, options = {})
+    ofwhat = ofwhat.to_s  
+    puts "has_many"+@has_many.inspect
     
-    # key format - [group0, group1, ..., doc.foreign_key, has_many.length+1, sort0, sort1, ...]
-    couch_key = []; params_options = {}
+    # identifier of association
+    # is possible have more has_many :apples with different sorting, ...
+    name = options[:name] || ofwhat
     
-    # grouping
-    if options[:group].is_a? String
-      couch_key << options[:group]
-      params_options[:group_level] = 1
-    elsif options[:group].is_a? Array
-      couch_key = options[:group]
-      params_options[:group_level] = options[:group].length
-    end
+    # child type
+    # used when create new child
+    type = ofwhat
     
-    # foreign_key
-    couch_key << (options.has_key?(:foreign_key) ? options[:foreign_key] : what+'_id')
+    ### KEY ASSEMBLING
+    # key format - [doc.foreign_key, has_many.length+1, sort0/group0, sort1/group1, ...]
+    couch_key = [];
     
-    # index | 0 - parent; 1,2, ... - associations
-    couch_key << (@@has_many.length+1)
+    # foreign_key of parent
+    foreign_key = (options.has_key?(:foreign_key) ? options[:foreign_key] : self.document.camelize+'_id')
+    couch_key << foreign_key 
     
-    couch_key << options[:sort] if options[:sort].is_a? String
-    couch_key + options[:sort] if options[:sort].is_a? Array
+    # index of association | 0 - parent; 1,2, ...
+    number = @has_many.length+1
+    couch_key << number
+    
+    # when multiple sort values, it can still be sort only in ascending or descending order
+    # I mean no mixed sorting
+    couch_key << options[:sort] if options[:sort_by].is_a? String
+    couch_key + options[:sort] if options[:sort_by].is_a? Array
     ###
-    # there may be more variants of sorting, grouping on one attibute
-    name = options[:name] || what
-    @@has_many << {:name => name, :couch_key => couch_key, :params => params_options}
+    
+    @has_many << {:name => name, :type => type.singularize.camelize, :couch_key => couch_key,
+    :place => number, :foreign_key => foreign_key}
     # regenerate views
-    generate_has_many_view
+    generate_has_many_views
   end
   
-  def generate_has_many_view
+  # generate views from associations variables
+  def generate_has_many_views
+    # emit parent document
     map =
       "function(doc) {
         if(doc.type == '#{self.document}') {
-          emit(doc._id, null);
+          emit([doc._id, 0], null);
         }"
         
-    @@has_many.each do |association|
-      #association_model = ActiveSupport::Inflector.singularize(ass[:attr])
-      association_model = association[:name].singularize.camelize
+    @has_many.each do |association|
       map +=
-        " else if(doc.type == '#{association_model}')
+        "else if(doc.type == " + association[:type] +")
             emit(" + association[:couch_key].to_s + ", null);
         }"
     end
     map += "\n}"
     
-    puts 'rujgioesrjgoesjgixx: ' + @@views.inspect
-    
-    @@views[:divan_association] = {:map => map}
-    puts 'rujgioesrjgoesjgixx: ' + @@views.inspect
-    #, :reduce => reduce}
+    @views[:has_many_associations] = {:map => map}
   end
 end
