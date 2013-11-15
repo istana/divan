@@ -1,3 +1,23 @@
+##### Implementation decisions
+
+CouchDB returns JSON by default. It is nicely converted to Hash.
+
+Divan::Document
+- handled through method_missing. This is slow, but convenient. Can type doc.authors.[0].name.
+
+doc.author.picture.thumb
+doc['author']['picture'].thumb
+
+# painfuuul
+if doc && doc['author'] && doc['author']['picture']
+...
+end
+
+
+
+
+
+
 This software is alpha and changing.
 
 - For ruby 1.9

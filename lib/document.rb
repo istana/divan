@@ -1,6 +1,7 @@
 
 require 'active_model'
 require 'securerandom'
+require 'dotted_hash'
 
 module Divan
     class Document < ::DottedHash
@@ -11,9 +12,8 @@ module Divan
 			require_relative './document/couchdb.rb'
 			include CouchDB
       
-			def initialize(*args)
-				
-				super(args)
+			def initialize(object)
+				super(object)
       end
 
       def persisted?

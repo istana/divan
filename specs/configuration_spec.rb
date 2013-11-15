@@ -1,10 +1,10 @@
-require File.dirname(__FILE__) + '/../spec_helper'
+require File.dirname(__FILE__) + '/spec_helper'
 
-describe Divan::Support::Configuration do
+describe Divan::Configuration do
   before :all do
     # custom location
-    @config_file = File.expand_path('../../data/config/couchdb.yaml', __FILE__)
-		@app_root = File.expand_path('../../data/', __FILE__)
+    @config_file = File.expand_path('data/config/couchdb.yaml', __FILE__)
+		@app_root = File.expand_path('../data/', __FILE__)
 		@fresh_config_data = {
       'reader' => {
         'test' => {
@@ -38,19 +38,21 @@ describe Divan::Support::Configuration do
   
   before(:each) do
 		@config_data = Marshal.load(Marshal.dump(@fresh_config_data))
-		@conf = Divan::Support::Configuration.load_config(@config_file)
+		#@conf = Divan::Support::Configuration.load_config(@config_file)
+		@conf = Divan::Configuration.new(@config_data)
 		ENV['RACK_ENV'] = 'test'
   end
   
-  after(:all) do
+#  after(:all) do
     # recreate couchdb.yaml (needed if some of test fails)
-    File.open(@config_file, 'w') do |out|
-      YAML.dump(@fresh_config_data, out)
-    end
-  end
-  
+#    File.open(@config_file, 'w') do |out|
+#      YAML.dump(@fresh_config_data, out)
+#    end
+#  end
+=begin
   describe 'configuration parsing' do
     it 'returns configuration as reader (default role)' do
+    	expect(@conf.config['re']).to 
       @conf.extract_config.should == @config_data['reader']['test']
     end
   
@@ -71,7 +73,7 @@ describe Divan::Support::Configuration do
       expect {@conf.extract_config('admin')}.to raise_error(/Section/)
     end
 	end
- 
+
 
 	context 'user.env is nil' do
     it 'returns defaults settings' do
@@ -86,22 +88,7 @@ describe Divan::Support::Configuration do
       }
     end
 	end
-
-  it 'persists configuration in "config" variable' do
-    dupconf = Marshal.load(Marshal.dump(@conf.config))
-    dupconf['reader']['development']['foo'].should == 'bar'
-    
-    dupconf['reader']['development']['foo'] = 'baz'
-    File.open(@config_file, 'w') do |out|
-      YAML.dump(dupconf, out)
-    end
-    @conf.config['reader']['development']['foo'].should == 'bar'
-    
-    File.open(@config_file, 'w') do |out|
-      YAML.dump(@config_data, out)
-    end
-  end
-  
+=end
 	describe 'database uri' do
     it 'returns string as default role (user)' do
       @conf.uri.should == 'https://login:password1@example.org:5986/softdivan/'
@@ -127,8 +114,7 @@ describe Divan::Support::Configuration do
 		it 'when Sinatra exists' do
       stub_const('Sinatra::Application', Class.new)
 		  Sinatra::Application.stub(:root).and_return(@app_root)
-		  @conf.load_config
-		  @conf.database.should == 'softdivan'
+		  expect(::Divan::Configuration.load_config).to eq(@fresh_config_data)
 	  end
 
 	  it 'when Rails exists' do
