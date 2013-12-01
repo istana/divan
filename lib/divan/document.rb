@@ -4,7 +4,7 @@ require 'dotted_hash'
 
 module Divan
     class Document < ::DottedHash
-    	include ::Divan::Support::Helpers
+    	include ::Divan::Helpers
     	
     	def full_url
 				@database.uri('reader')

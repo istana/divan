@@ -1,4 +1,4 @@
-require "divan/version"
+require_relative "./divan/version.rb"
 
 require 'multi_json'
 require 'securerandom'

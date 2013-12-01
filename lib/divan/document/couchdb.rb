@@ -1,33 +1,10 @@
-# -*- encoding : utf-8 -*-
-
-require_relative '../support/essential.rb'
-require_relative '../support/helpers.rb'
-
 module Divan::Document::CouchDB
+	include ::Divan::Helpers
 
-	include ::Divan::Support::Helpers
-
-	#  headers 'Content-Type' => 'application/json', 'Accept' => 'application/json'
+#  headers 'Content-Type' => 'application/json', 'Accept' => 'application/json'
 
 	def deleted?
 		_deleted == true
-	end
-
-	def design_string
-		type.nil? ? 'Divan::Design' : self.class.name + "Design"
-	end
-
-	def design
-		ActiveSupport::Inflector.constantize(design_string)
-	end
-
-	def design?
-		begin  
-			design
-		rescue Exception 
-			return false
-		end
-		true
 	end
 
 	# Revisions

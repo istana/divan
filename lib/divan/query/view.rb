@@ -1,10 +1,9 @@
-require 'ostruct'
-require 'active_support/inflector'
+require_relative '../helpers.rb'
 
 module Divan
 	module Query
 		class View
-			include ::Divan::Support::Helpers
+			include ::Divan::Helpers
 
 			def initialize(database, design, name)
 				@database = database

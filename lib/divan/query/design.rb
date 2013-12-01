@@ -1,7 +1,9 @@
+require_relative '../helpers.rb'
+
 module Divan
 	module Query
 		class Design
-			include ::Divan::Support::Helpers
+			include ::Divan::Helpers
 			
 			def initialize(database, name)
 				raise('Design name cannot be blank') if name.blank?
