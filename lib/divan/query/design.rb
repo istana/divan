@@ -20,20 +20,6 @@ module Divan
 				#@view = name
 				View.new(@database, @design, name)
 			end
-			
-			# directly into the CouchDB
-			def params(opts = {})
-				@params.merge!(opts)
-			end
-			
-			# cool methods
-			def key(name)
-				@params.merge!(key: name)
-			end
-			
-			def go
-				
-			end
 		end
 	end
 end 
