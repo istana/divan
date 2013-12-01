@@ -1,4 +1,6 @@
 require 'ostruct'
+require 'active_support/inflector'
+
 module Divan
 	module Query
 		class View
@@ -10,6 +12,7 @@ module Divan
 				@view = name
 				@params = {}
 				@raw = false
+				@mapwith = 'Divan::Document'
 				return self
 			end
 			
@@ -22,30 +25,22 @@ module Divan
 				self
 			end
 			
-			def docmap(view_result)
-				
-				
+			def map_with(model)
+			  if model.safe_constantize
+			    @mapwith = model
+			  else
+			    raise(model + ' is not defined')
+			  end
+			  self
+			end
 			
-				puts view_result.headers.inspect
+			def docmap(view_result)
 				if view_result.success?
 					body = view_result.from_json
 					res = body['rows'].reduce([]) do |result, row|
-						puts row.inspect
-						result << Divan::Document.new(row['doc'])
+						result << @mapwith.constantize.new(row['doc'])
 					end
 					res
-					
-=begin				x = OpenStruct.new
-				x.code = view_result.response_code
-				b = view_result.from_json
-				x.offset = b['offset']
-				x.total_rows = b['total_rows']
-				x.docs = b['rows'].reduce([]) do |result, row|
-					puts row.inspect
-					result << Divan::Document.new(row['doc'])
-				end
-				x
-=end
 				else
 					raise('Error' + view_result.body.inspect + view_result.code.inspect)
 				end
@@ -56,20 +51,6 @@ module Divan
 				@params.merge!(opts)
 				self
 			end
-			
-			# go params
-			def go
-				r = Typhoeus.get(full_url, params: @params)
-				obj = r.from_json
-				x = obj.delete('rows')
-				obj.each_pair do |key, value|
-					x.define_singleton_method key do
-						value
-					end
-				end
-				x
-			end
-			
 			
 			def convert(response)
 				obj = response.from_json
@@ -84,37 +65,45 @@ module Divan
 			private :convert
 			# cool methods
 			def key(name, options = {})
-				# convert key of @params to JSON for CouchDB
-				@params = {include_docs: true, key: MultiJson.dump(name)}
-				# bit of a hack
-#				if name.is_a?(String) || name.is_a?(Symbol)
-#					@params.merge!(key: "\"#{name}\"")
-#				else
-#					@params.merge!(key: name)
-#				end
-				
-				puts 'PARAMS ' + @params.inspect
-				puts 'FULL_URL ' + full_url
-				
-				req = Typhoeus.get(full_url, params: @params)
-				puts 'KEY RESPONSE ' + req.inspect
-				if @raw
-					r = convert(req)
-				else
-					r = docmap(req)
+				conn_handler do
+					# convert key of @params to JSON for CouchDB
+					@params.merge!(include_docs: true, key: MultiJson.dump(name))
+					handle_raw(Typhoeus.get(full_url, params: @params))
 				end
-				
-				flush_chain_variables
-				return r
 			end
 			
 			def keys(arg = [])
-				@params.merge!(keys: arg)
-				req = Typhoeus.post(full_url, body: @params)
+				conn_handler do
+					@params.merge!(keys: arg)
+					handle_raw(Typhoeus.post(full_url, body: @params))
+				end
+			end
+
+			def go
+				conn_handler do
+					convert(Typhoeus.get(full_url, params: @params))
+				end
+			end
+			
+			def all
+				conn_handler do
+					@params.merge!(include_docs: true)
+					handle_raw(Typhoeus.get(full_url, params: @params))
+				end
+			end
+			
+			private
+			def conn_handler(&code)
+				data = code.call
+				flush_chain_variables
+				return data
+			end
+			
+			def handle_raw(result)
 				if @raw
-					convert(req)
+					convert(result)
 				else
-					docmap(req)
+					docmap(result)
 				end
 			end
 			

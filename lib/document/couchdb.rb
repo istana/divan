@@ -9,10 +9,6 @@ module Divan::Document::CouchDB
 
 	#  headers 'Content-Type' => 'application/json', 'Accept' => 'application/json'
 
-	def new?
-		_rev == nil
-	end
-
 	def deleted?
 		_deleted == true
 	end
@@ -40,7 +36,7 @@ module Divan::Document::CouchDB
 		return nil if self.new?
 		pacify_blank(_id)
 
-		req = Typhoeus.head(database + uri_encode(_id))
+		req = Typhoeus.head(full_url + uri_encode(_id))
 
 		if req.success?
 			return req.headers['ETag'].gsub('"', '')
@@ -75,7 +71,7 @@ module Divan::Document::CouchDB
 		id = doc.delete(:_id)
 		pacify_blank(id)
 
-		res = Typhoeus.put(database + '/' + uri_encode(id),
+		res = Typhoeus.put(full_url + uri_encode(id),
 									params: options,
 									body: MultiJson.dump(doc)
 							)
@@ -93,10 +89,10 @@ module Divan::Document::CouchDB
 	end
 
 	def destroy
-		return self if self.new?
+		return false if self.new?
 		raise("Revision is old!") unless self.latest?
-		res = Typhoeus.delete(database + '/' + uri_encode(_id),
-										params: { rev: @doc['_rev'] }
+		res = Typhoeus.delete(full_url + uri_encode(_id),
+										params: { rev: _rev }
 							)
 		raise("Error destroying document!") unless res.success?
 		self
@@ -109,7 +105,7 @@ module Divan::Document::CouchDB
 	def attachment(id)
 		id = id.to_s
 		pacify_blank(id, _id)
-		res = Typhoeus.get(database + uri_encode(_id) + '/' + uri_encode(id), params: { 'Accept' => '*/*' })
+		res = Typhoeus.get(full_url + uri_encode(_id) + '/' + uri_encode(id), params: { 'Accept' => '*/*' })
 
 		if res.success?
 			return result.body
