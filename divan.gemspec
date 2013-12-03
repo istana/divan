@@ -25,5 +25,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency "multi_json", "~> 1.8"
   spec.add_dependency "typhoeus"
   spec.add_dependency "activesupport", "~> 4.0"
-  spec.add_dependency "dotted_hash"
+  spec.add_dependency "dotted_hash", "~> 1.0"
 end
